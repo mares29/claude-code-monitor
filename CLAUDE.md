@@ -2,6 +2,8 @@
 
 macOS menu bar app monitoring Claude Code CLI instances. Swift 6 + SwiftUI.
 
+Entry point: `ClaudeMonitor/ClaudeMonitorApp.swift` (MenuBarExtra + Window scenes).
+
 ## Build & Run
 
 ```bash
@@ -9,17 +11,22 @@ xcodebuild -scheme ClaudeMonitor -configuration Debug build   # build
 open ClaudeMonitor.xcodeproj                                   # open in Xcode
 ```
 
-No external dependencies. Requires Xcode 16+.
+No external dependencies. Requires macOS 14+ and Xcode 16+.
 
 ## Project Structure
 
 ```
 ClaudeMonitor/
-├── Models/      # Data types: ClaudeInstance, ConversationTurn, MonitorState
-├── Services/    # Actors: ProcessScanner, FileTracker, ActivityTracker, SessionParser
-├── Views/       # SwiftUI: MainView (NavigationSplitView), SessionFeedView, TurnCard
-├── Components/  # Reusable: InstanceRow, SparklineView, StatusDot
-├── Utilities/   # Parsers: ProcessParser, LogParser, ToolOperationParser
+├── Models/      # ClaudeInstance, MonitorState, SessionModels, ActivityModels, Agent
+├── Services/    # Actors: ProcessScanner, LogTailer, AgentScanner, FileTracker,
+│                #   ActivityTracker, ConflictDetector, SessionParser, SessionFileWatcher
+├── Views/
+│   ├── Menu/    # MenuBarContent (NSMenu dropdown)
+│   ├── Detail/  # SessionFeedView, TurnCard, TimelineRow, AgentBlock
+│   └── Console/ # ConsoleView (log viewer)
+├── Components/  # InstanceRow, SparklineView, StatusDot, GroupHeaderLabel,
+│                #   TreeLine, SessionActionBar, InstanceContextMenu
+├── Utilities/   # ProcessParser, LogParser, InstanceActions
 ```
 
 ## Key Patterns
@@ -51,3 +58,9 @@ fix(scope): description    # bug fix
 ```
 
 Scopes: menubar, parser, sort, feed, terminals, flags, tools, etc.
+
+## Gotchas
+
+- **NSMenu styling**: `.menuBarExtraStyle(.menu)` renders native NSMenu items. SwiftUI modifiers like `.foregroundStyle()` and `.opacity()` are ignored — use `AttributedString` with `.foregroundColor` instead.
+- **ToolOperationParser**: Lives in Services/ despite being in Utilities/ conceptually — it's registered as a service in the app.
+- **Silent parse failures**: All JSON decoding uses `try?` with fallback defaults. Never crashes on malformed JSONL.
