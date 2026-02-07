@@ -98,6 +98,11 @@ struct ClaudeInstance: Identifiable, Hashable, Sendable {
             return sessionId
         }
 
+        // Try most recently modified JSONL in the project directory
+        if let workingDir = workingDirectory, let sessionId = findLatestSessionFile(for: workingDir) {
+            return sessionId
+        }
+
         // Fall back to reading from sessions-index.json
         guard let workingDir = workingDirectory else { return nil }
         return readSessionIdFromIndex(for: workingDir)
@@ -143,6 +148,30 @@ struct ClaudeInstance: Identifiable, Hashable, Sendable {
         }
 
         return nil
+    }
+
+    /// Find the most recently modified JSONL session file in the project directory
+    private static func findLatestSessionFile(for workingDirectory: String) -> String? {
+        let projectDir = URL(fileURLWithPath: projectsPath(for: workingDirectory))
+        let fm = FileManager.default
+
+        guard let files = try? fm.contentsOfDirectory(
+            at: projectDir,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: .skipsHiddenFiles
+        ) else { return nil }
+
+        return files
+            .filter { $0.pathExtension == "jsonl" }
+            .compactMap { url -> (String, Date)? in
+                guard let attrs = try? url.resourceValues(forKeys: [.contentModificationDateKey]),
+                      let modDate = attrs.contentModificationDate else { return nil }
+                let sessionId = url.deletingPathExtension().lastPathComponent
+                guard UUID(uuidString: sessionId) != nil else { return nil }
+                return (sessionId, modDate)
+            }
+            .max(by: { $0.1 < $1.1 })?
+            .0
     }
 
     /// Check if a session ID belongs to a specific project

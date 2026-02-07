@@ -16,11 +16,11 @@ struct SessionActionBar: View {
                 HStack(spacing: 5) {
                     Image(systemName: copyConfirmation ? "checkmark.circle.fill" : "folder.fill")
                         .font(.system(size: 11))
-                        .foregroundStyle(copyConfirmation ? Color.green : Color.secondary.opacity(0.5))
+                        .foregroundStyle(copyConfirmation ? Color.green : Color.secondary)
 
                     Text(instance.workingDirectory)
                         .font(.subheadline.monospaced())
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.primary)
                         .lineLimit(1)
                         .truncationMode(.head)
                 }
