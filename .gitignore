@@ -28,3 +28,9 @@ xcuserdata/
 # Provisioning
 *.mobileprovision
 *.provisionprofile
+
+# Internal dev plans
+docs/plans/
+
+# Claude Code
+.claude/

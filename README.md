@@ -4,6 +4,10 @@ A native macOS menu bar app for monitoring running [Claude Code](https://docs.an
 
 Built with Swift 6 and SwiftUI. No external dependencies.
 
+<p align="center">
+  <img src="docs/assets/demo.gif" alt="Claude Code Monitor demo" width="800">
+</p>
+
 ## Features
 
 - **Menu bar presence** — see total/active instance count at a glance
