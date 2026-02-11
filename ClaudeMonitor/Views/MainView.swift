@@ -6,6 +6,12 @@ struct MainView: View {
     @State private var copyConfirmation: String?
     @State private var expandedGroups: Set<String> = []
     @State private var knownDirectories: Set<String> = []
+    @State private var detailTab: DetailTab = .session
+
+    enum DetailTab: Hashable {
+        case session
+        case changes
+    }
 
     private var selectedPid: Int? {
         if case .instance(let pid) = state.selectedItem { return pid }
@@ -118,7 +124,21 @@ struct MainView: View {
     private var detail: some View {
         if let pid = selectedPid,
            let instance = state.instances.first(where: { $0.pid == pid }) {
-            SessionFeedView(instance: instance)
+            VStack(spacing: 0) {
+                detailTabBar(instance: instance)
+                Divider()
+                switch detailTab {
+                case .session:
+                    SessionFeedView(instance: instance)
+                        .frame(maxHeight: .infinity)
+                case .changes:
+                    DiffSummaryView(
+                        instance: instance,
+                        summary: state.gitDiffs[instance.workingDirectory] ?? .empty
+                    )
+                    .frame(maxHeight: .infinity)
+                }
+            }
         } else if let instance = state.instances.first {
             SessionFeedView(instance: instance)
                 .onAppear { state.selectedItem = .instance(instance.pid) }
@@ -129,6 +149,43 @@ struct MainView: View {
                 description: Text("No Claude Code instances are running")
             )
         }
+    }
+
+    private func detailTabBar(instance: ClaudeInstance) -> some View {
+        let diff = state.gitDiffs[instance.workingDirectory] ?? .empty
+        return HStack(spacing: 0) {
+            tabButton("Session", systemImage: "text.bubble", tab: .session)
+            tabButton("Changes", systemImage: "arrow.triangle.branch", tab: .changes, badge: diff.fileCount)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func tabButton(_ title: String, systemImage: String, tab: DetailTab, badge: Int = 0) -> some View {
+        Button {
+            detailTab = tab
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: systemImage)
+                    .font(.caption)
+                Text(title)
+                    .font(.caption.weight(.medium))
+                Text("\(badge)")
+                    .font(.caption2)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(Color.secondary.opacity(0.15))
+                    .clipShape(Capsule())
+                    .opacity(badge > 0 ? 1 : 0)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .background(detailTab == tab ? Color.accentColor.opacity(0.12) : Color.clear)
+            .foregroundStyle(detailTab == tab ? .primary : .secondary)
+            .cornerRadius(6)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Helpers

@@ -14,6 +14,7 @@ struct ClaudeMonitorApp: App {
     private let toolParser = ToolOperationParser()
     private let conflictDetector = ConflictDetector()
     private let activityTracker = ActivityTracker()
+    private let gitDiffScanner = GitDiffScanner()
 
     var body: some Scene {
         MenuBarExtra {
@@ -192,6 +193,14 @@ struct ClaudeMonitorApp: App {
                         )
                     }
                 }
+
+                // Git diff scanning
+                    let directories = Array(Set(instances.map(\.workingDirectory)))
+                    let gitScanner = self.gitDiffScanner
+                    let diffs = await gitScanner.scan(workingDirectories: directories)
+                    await MainActor.run {
+                        state.updateGitDiffs(diffs)
+                    }
 
                 // Prune expired conflicts and update UI
                 await conflicts.pruneExpired()

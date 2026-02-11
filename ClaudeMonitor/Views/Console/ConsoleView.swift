@@ -48,6 +48,7 @@ struct ConsolePanel: View {
                         Image(systemName: "trash")
                     }
                     .buttonStyle(.borderless)
+                    .help("Clear console")
                 }
             }
             .padding(.horizontal, 12)

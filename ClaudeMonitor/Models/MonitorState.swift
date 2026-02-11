@@ -20,6 +20,9 @@ final class MonitorState {
     var sessionLatestTokens: [String: TokenUsage] = [:]
     var sessionCurrentModels: [String: String] = [:]
 
+    // Git diff data (keyed by working directory)
+    var gitDiffs: [String: GitDiffSummary] = [:]
+
     private let maxLogEntries = 10_000
     private let maxRecentOps = 100
 
@@ -113,6 +116,10 @@ final class MonitorState {
         if let action { sessionCurrentActions[sessionId] = action }
         if let model { sessionCurrentModels[sessionId] = model }
         if let tokens { sessionLatestTokens[sessionId] = tokens }
+    }
+
+    func updateGitDiffs(_ diffs: [String: GitDiffSummary]) {
+        gitDiffs = diffs
     }
 
     var hasActiveConflicts: Bool {
