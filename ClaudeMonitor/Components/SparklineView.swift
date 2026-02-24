@@ -53,18 +53,39 @@ struct SparklineShape: Shape {
 
 struct SparklineView: View {
     let data: [Double]
-    var tint: Color = .blue
+    var tint: Color = .accentColor
+
+    @State private var scrollOffset: CGFloat = 0
+    @State private var lastChangeTime: Date = .now
 
     var body: some View {
-        SparklineShape(data: data)
-            .stroke(
-                LinearGradient(
-                    colors: [tint.opacity(0.3), tint],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                ),
-                style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
-            )
+        GeometryReader { geo in
+            let stepX = data.count > 1
+                ? geo.size.width / CGFloat(data.count - 1)
+                : 0
+
+            SparklineShape(data: data)
+                .stroke(
+                    LinearGradient(
+                        colors: [tint.opacity(0.3), tint],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    ),
+                    style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round)
+                )
+                .offset(x: scrollOffset)
+                .onChange(of: data) {
+                    let now = Date.now
+                    let interval = now.timeIntervalSince(lastChangeTime)
+                    lastChangeTime = now
+
+                    scrollOffset = stepX
+                    withAnimation(.linear(duration: min(interval * 0.9, 1.5))) {
+                        scrollOffset = 0
+                    }
+                }
+        }
+        .clipped()
     }
 }
 
@@ -80,25 +101,17 @@ extension String {
 
 #Preview {
     VStack(spacing: 20) {
-        // Active session
         SparklineView(data: [1, 3, 2, 5, 4, 6, 3, 2, 4, 5])
             .frame(width: 60, height: 16)
 
-        // From unicode string
         SparklineView(data: "▁▂▃▅▇▅▃▂▁▂".sparklineToData())
             .frame(width: 60, height: 16)
 
-        // Low activity
         SparklineView(data: [0, 1, 0, 0, 1, 0, 0, 0, 1, 0])
             .frame(width: 60, height: 16)
 
-        // Empty/idle
         SparklineView(data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
             .frame(width: 60, height: 16)
-
-        // Menu bar size
-        SparklineView(data: "▁▂▃▅▇▅▃▂▁▂".sparklineToData())
-            .frame(width: 48, height: 12)
     }
     .padding()
     .background(Color(.windowBackgroundColor))

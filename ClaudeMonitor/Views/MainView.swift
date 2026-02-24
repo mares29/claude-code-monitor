@@ -171,7 +171,7 @@ struct MainView: View {
                     .font(.caption)
                 Text(title)
                     .font(.caption.weight(.medium))
-                Text("\(badge)")
+                Text("\(max(badge, 0))")
                     .font(.caption2)
                     .padding(.horizontal, 5)
                     .padding(.vertical, 1)
@@ -186,6 +186,7 @@ struct MainView: View {
             .cornerRadius(6)
         }
         .buttonStyle(.plain)
+        .focusEffectDisabled()
     }
 
     // MARK: - Helpers

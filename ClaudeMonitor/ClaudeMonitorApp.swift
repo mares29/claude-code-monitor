@@ -1,7 +1,27 @@
 import SwiftUI
 
+/// Handles Dock icon click to reopen the main window
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    var openWindow: OpenWindowAction?
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            openWindow?(id: "main")
+        }
+        return true
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        // Ensure window comes to front when app is activated via Dock
+        if let window = NSApplication.shared.windows.first(where: { $0.identifier?.rawValue == "main" }) {
+            window.makeKeyAndOrderFront(nil)
+        }
+    }
+}
+
 @main
 struct ClaudeMonitorApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var state = MonitorState()
     @Environment(\.openWindow) private var openWindow
 
@@ -17,6 +37,8 @@ struct ClaudeMonitorApp: App {
     private let gitDiffScanner = GitDiffScanner()
 
     var body: some Scene {
+        let _ = updateDelegate()
+
         MenuBarExtra {
             MenuBarMenu(state: state)
         } label: {
@@ -25,10 +47,9 @@ struct ClaudeMonitorApp: App {
                     .font(.system(size: 11))
 
                 let activeCount = state.instances.filter(\.isActive).count
-                let totalCount = state.instances.count
 
-                if totalCount > 0 {
-                    Text("\(totalCount)/\(activeCount)")
+                if activeCount > 0 {
+                    Text("\(activeCount)")
                         .font(.system(size: 12, weight: .medium))
                         .monospacedDigit()
                 }
@@ -78,6 +99,10 @@ struct ClaudeMonitorApp: App {
                 }
             }
         }
+    }
+
+    private func updateDelegate() {
+        appDelegate.openWindow = openWindow
     }
 
     private var selectedInstance: ClaudeInstance? {
@@ -132,75 +157,77 @@ struct ClaudeMonitorApp: App {
         let conflicts = conflictDetector
         let activity = activityTracker
 
+        // Fast loop (0.5s): sparkline + live data (cheap file reads only)
         Task.detached {
             while true {
-                try? await Task.sleep(for: .seconds(2))
+                try? await Task.sleep(for: .milliseconds(500))
 
-                // Get current instances
                 let instances = await MainActor.run { state.instances }
 
                 for instance in instances {
                     guard let sessionId = instance.sessionId else { continue }
 
-                    // Build path to session JSONL
                     let path = Self.sessionFilePath(
                         workingDirectory: instance.workingDirectory,
                         sessionId: sessionId
                     )
 
-                    // Technique 1: Read only new lines
                     let newLines = await tracker.readNewLines(from: path)
 
-                    // Technique 4: Parse tool operations
-                    var allOps: [ToolOperation] = []
-                    for line in newLines {
-                        let ops = parser.parse(line: line, sessionId: sessionId)
-                        allOps.append(contentsOf: ops)
+                    if !newLines.isEmpty {
+                        await activity.record(sessionId: sessionId, count: newLines.count)
 
-                        // Technique 2: Record for conflict detection
-                        for op in ops {
-                            _ = await conflicts.record(op)
+                        let liveData = Self.extractLiveData(from: newLines)
+                        let sid = sessionId
+
+                        // Parse tool operations inline
+                        var allOps: [ToolOperation] = []
+                        for line in newLines {
+                            let ops = parser.parse(line: line, sessionId: sessionId)
+                            allOps.append(contentsOf: ops)
+                            for op in ops {
+                                _ = await conflicts.record(op)
+                            }
                         }
 
-                        // Technique 3: Record for activity tracking
-                        if !ops.isEmpty {
-                            await activity.record(sessionId: sessionId, count: ops.count)
-                        }
-                    }
-
-                    // Update UI with new operations
-                    let opsToAdd = allOps
-                    if !opsToAdd.isEmpty {
+                        let opsToAdd = allOps
                         await MainActor.run {
-                            state.addOperations(opsToAdd)
+                            if !opsToAdd.isEmpty {
+                                state.addOperations(opsToAdd)
+                            }
+                            state.updateSessionLiveData(
+                                sessionId: sid,
+                                action: liveData.action,
+                                model: liveData.model,
+                                tokens: liveData.tokens
+                            )
                         }
                     }
 
-                    // Update sparkline for this session
+                    // Always update sparkline (shows decay even without new data)
                     let spark = await activity.sparkline(for: sessionId)
-
-                    // Extract live data from latest JSONL entries
-                    let liveData = Self.extractLiveData(from: newLines)
                     let sid = sessionId
-
                     await MainActor.run {
                         state.updateSparkline(sessionId: sid, sparkline: spark)
-                        state.updateSessionLiveData(
-                            sessionId: sid,
-                            action: liveData.action,
-                            model: liveData.model,
-                            tokens: liveData.tokens
-                        )
                     }
                 }
+            }
+        }
+
+        // Slow loop (3s): git diff scanning + conflict pruning
+        Task.detached {
+            while true {
+                try? await Task.sleep(for: .seconds(3))
+
+                let instances = await MainActor.run { state.instances }
 
                 // Git diff scanning
-                    let directories = Array(Set(instances.map(\.workingDirectory)))
-                    let gitScanner = self.gitDiffScanner
-                    let diffs = await gitScanner.scan(workingDirectories: directories)
-                    await MainActor.run {
-                        state.updateGitDiffs(diffs)
-                    }
+                let directories = Array(Set(instances.map(\.workingDirectory)))
+                let gitScanner = self.gitDiffScanner
+                let diffs = await gitScanner.scan(workingDirectories: directories)
+                await MainActor.run {
+                    state.updateGitDiffs(diffs)
+                }
 
                 // Prune expired conflicts and update UI
                 await conflicts.pruneExpired()

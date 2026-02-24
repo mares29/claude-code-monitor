@@ -101,12 +101,12 @@ struct ToolCallRow: View {
     private var iconColor: Color {
         switch toolCall.name.lowercased() {
         case "write", "edit": .orange
-        case "bash": .purple
-        case "task", "taskoutput", "taskstop": .indigo
-        case "taskcreate", "taskupdate", "tasklist", "taskget": .teal
-        case "skill": .pink
+        case "bash": .brown
+        case "task", "taskoutput", "taskstop": .brown
+        case "taskcreate", "taskupdate", "tasklist", "taskget": .brown
+        case "skill": .orange
         case "askuserquestion": .green
-        default: .blue
+        default: .accentColor
         }
     }
 

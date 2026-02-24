@@ -5,10 +5,6 @@ struct AgentBlock: View {
     let isExpanded: Bool
     let onToggle: () -> Void
 
-    // Agent turns loaded on expand
-    @State private var agentTurns: [ConversationTurn] = []
-    @State private var isLoading = false
-
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Header
@@ -20,16 +16,11 @@ struct AgentBlock: View {
                         .frame(width: 12)
 
                     Image(systemName: "cpu")
-                        .foregroundStyle(.purple)
+                        .foregroundStyle(.brown)
 
-                    Text("Agent: \(agent.type.displayName)")
+                    Text(agent.description ?? agent.type.displayName)
                         .font(.body)
-
-                    if agent.turnCount > 0 {
-                        Text("(\(agent.turnCount) turns)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                        .lineLimit(1)
 
                     Spacer()
 
@@ -40,33 +31,33 @@ struct AgentBlock: View {
             .buttonStyle(.plain)
             .padding(.vertical, 6)
             .padding(.horizontal, 8)
-            .background(Color.purple.opacity(0.05))
+            .background(Color.brown.opacity(0.08))
             .cornerRadius(6)
 
             // Expanded content
             if isExpanded {
-                if isLoading {
-                    ProgressView()
-                        .padding()
-                } else if agentTurns.isEmpty {
-                    Text("No activity")
-                        .font(.caption)
+                if let content = agent.resultContent, !content.isEmpty {
+                    MarkdownText(content)
                         .foregroundStyle(.secondary)
-                        .padding()
-                } else {
-                    VStack(alignment: .leading, spacing: 8) {
-                        ForEach(agentTurns) { turn in
-                            MiniTurnRow(turn: turn)
-                        }
+                        .padding(.leading, 20)
+                        .padding(.vertical, 8)
+                } else if agent.status == .running {
+                    HStack(spacing: 6) {
+                        ProgressView()
+                            .controlSize(.mini)
+                        Text("Agent is working...")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                     .padding(.leading, 20)
                     .padding(.vertical, 8)
+                } else {
+                    Text("No output")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .padding(.leading, 20)
+                        .padding(.vertical, 8)
                 }
-            }
-        }
-        .onChange(of: isExpanded) { _, expanded in
-            if expanded && agentTurns.isEmpty {
-                loadAgentTurns()
             }
         }
     }
@@ -81,7 +72,7 @@ struct AgentBlock: View {
                 Text("Running")
                     .font(.caption)
             }
-            .foregroundStyle(.blue)
+            .foregroundStyle(Color.accentColor)
         case .completed:
             Label("Done", systemImage: "checkmark.circle.fill")
                 .font(.caption)
@@ -97,56 +88,4 @@ struct AgentBlock: View {
         }
     }
 
-    private func loadAgentTurns() {
-        // TODO: Load from agent-{type}-{id}.jsonl file
-        isLoading = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            isLoading = false
-        }
-    }
-}
-
-/// Compact turn display for nested agent view
-private struct MiniTurnRow: View {
-    let turn: ConversationTurn
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text(timeString)
-                .font(.caption.monospacedDigit())
-                .foregroundStyle(.tertiary)
-
-            VStack(alignment: .leading, spacing: 2) {
-                if let text = turn.text {
-                    Text(text)
-                        .font(.caption)
-                        .lineLimit(2)
-                }
-
-                if !turn.toolCalls.isEmpty {
-                    HStack(spacing: 4) {
-                        ForEach(turn.toolCalls.prefix(3)) { tool in
-                            Text(tool.name)
-                                .font(.caption2)
-                                .padding(.horizontal, 4)
-                                .padding(.vertical, 1)
-                                .background(Color.secondary.opacity(0.1))
-                                .cornerRadius(3)
-                        }
-                        if turn.toolCalls.count > 3 {
-                            Text("+\(turn.toolCalls.count - 3)")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private var timeString: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "HH:mm:ss"
-        return fmt.string(from: turn.timestamp)
-    }
 }

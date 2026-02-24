@@ -36,7 +36,7 @@ struct TimelineRow: View {
                     Text(toolCall.name)
                         .font(.subheadline)
                         .fontWeight(.medium)
-                        .frame(width: 56, alignment: .leading)
+                        .lineLimit(1)
 
                     // Target
                     Text(displayTarget)

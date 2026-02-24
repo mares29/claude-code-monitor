@@ -15,7 +15,7 @@ struct UserMessageDivider: View {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "person.circle.fill")
                     .font(.system(size: 16))
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Color.accentColor)
 
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline) {
@@ -39,7 +39,7 @@ struct UserMessageDivider: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(Color.blue.opacity(0.06))
+            .background(Color.accentColor.opacity(0.06))
             .clipShape(RoundedRectangle(cornerRadius: 8))
         }
     }
@@ -93,9 +93,7 @@ struct AssistantTextBlock: View {
             .padding(.vertical, 3)
 
             if isExpanded {
-                Text(text)
-                    .font(.body)
-                    .textSelection(.enabled)
+                MarkdownText(text, font: .body)
                     .padding(.leading, 64)
                     .padding(.vertical, 6)
                     .frame(maxWidth: .infinity, alignment: .leading)

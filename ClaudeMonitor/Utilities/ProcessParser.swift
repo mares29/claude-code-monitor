@@ -72,8 +72,11 @@ struct ProcessParser: Sendable {
         // Detect terminal app by walking PPID chain
         let terminalApp = detectTerminalApp(pid: pid)
 
-        // Consider active if CPU usage > 5%
-        let isActive = cpuPercent > 5.0
+        // Determine activity from JSONL signals
+        let activityState = ClaudeInstance.determineActivityState(
+            workingDirectory: workingDirectory,
+            sessionId: sessionId
+        )
 
         return ClaudeInstance(
             pid: pid,
@@ -81,7 +84,7 @@ struct ProcessParser: Sendable {
             sessionId: sessionId,
             startTime: startTime,
             arguments: args,
-            isActive: isActive,
+            activityState: activityState,
             terminalApp: terminalApp,
             cpuPercent: cpuPercent,
             memoryMB: memoryMB,

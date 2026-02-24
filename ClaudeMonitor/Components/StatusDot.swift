@@ -9,7 +9,7 @@ enum StatusDotState {
     var color: Color {
         switch self {
         case .idle: .gray
-        case .active: .blue
+        case .active: .accentColor
         case .warning: .yellow
         case .error: .red
         }

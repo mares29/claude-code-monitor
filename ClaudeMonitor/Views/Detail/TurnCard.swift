@@ -34,7 +34,7 @@ struct TurnCard: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 8)
-            .background(isUser ? Color.blue.opacity(0.08) : Color.secondary.opacity(0.05))
+            .background(isUser ? Color.accentColor.opacity(0.08) : Color.secondary.opacity(0.05))
 
             Divider()
 
@@ -77,7 +77,7 @@ struct TurnCard: View {
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(isUser ? Color.blue.opacity(0.2) : Color.secondary.opacity(0.1), lineWidth: 1)
+                .stroke(isUser ? Color.accentColor.opacity(0.2) : Color.secondary.opacity(0.1), lineWidth: 1)
         )
     }
 
@@ -95,7 +95,7 @@ struct TurnCard: View {
                         Text(isTextExpanded ? "Show less" : "Show more")
                     }
                     .font(.caption)
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Color.accentColor)
                 }
                 .buttonStyle(.plain)
             }

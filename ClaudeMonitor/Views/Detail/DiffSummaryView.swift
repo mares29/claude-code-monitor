@@ -104,7 +104,7 @@ struct DiffSummaryView: View {
         } else if line.hasPrefix("-") && !line.hasPrefix("---") {
             return Color.red.opacity(0.15)
         } else if line.hasPrefix("@@") {
-            return Color.blue.opacity(0.1)
+            return Color.accentColor.opacity(0.1)
         }
         return .clear
     }

@@ -32,12 +32,10 @@ struct SessionFeedView: View {
                     LazyVStack(alignment: .leading, spacing: 2) {
                         ForEach(turns) { turn in
                             turnTimeline(turn)
-                                .transition(.move(edge: .top).combined(with: .opacity))
                         }
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .animation(.easeInOut(duration: 0.25), value: turns.count)
                 }
             }
         }

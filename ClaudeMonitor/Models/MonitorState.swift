@@ -70,7 +70,7 @@ final class MonitorState {
                     startTime: existingStartTime,
                     arguments: instance.arguments,
                     agents: instance.agents,
-                    isActive: instance.isActive,
+                    activityState: instance.activityState,
                     terminalApp: instance.terminalApp,
                     cpuPercent: instance.cpuPercent,
                     memoryMB: instance.memoryMB,

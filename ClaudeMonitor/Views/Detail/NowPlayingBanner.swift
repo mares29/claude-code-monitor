@@ -40,7 +40,7 @@ struct NowPlayingBanner: View {
         .background(.ultraThinMaterial)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(isActive ? Color.blue.opacity(0.4) : Color.secondary.opacity(0.15), lineWidth: 1)
+                .stroke(isActive ? Color.accentColor.opacity(0.4) : Color.secondary.opacity(0.15), lineWidth: 1)
         )
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
@@ -82,8 +82,8 @@ struct NowPlayingBanner: View {
         if let lastTool = turn.toolCalls.last {
             return toolIconColor(lastTool.name)
         }
-        if turn.role == .user { return .blue }
-        if !turn.agentSpawns.isEmpty { return .purple }
+        if turn.role == .user { return .accentColor }
+        if !turn.agentSpawns.isEmpty { return .brown }
         return .secondary
     }
 
@@ -129,11 +129,11 @@ func toolIconName(_ name: String) -> String {
 func toolIconColor(_ name: String) -> Color {
     switch name.lowercased() {
     case "write", "edit": .orange
-    case "bash": .purple
-    case "task", "taskoutput", "taskstop": .indigo
-    case "taskcreate", "taskupdate", "tasklist", "taskget": .teal
-    case "skill": .pink
+    case "bash": .brown
+    case "task", "taskoutput", "taskstop": .brown
+    case "taskcreate", "taskupdate", "tasklist", "taskget": .brown
+    case "skill": .orange
     case "askuserquestion": .green
-    default: .blue
+    default: .accentColor
     }
 }

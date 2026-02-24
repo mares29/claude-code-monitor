@@ -128,12 +128,21 @@ struct SessionParser: Sendable {
                 // Check for Task tool (agent spawn)
                 if name == "Task" {
                     let agentType = input["subagent_type"]?.stringValue ?? "unknown"
+                    let description = input["description"]?.stringValue
+                    let result = toolResults[toolId]
+                    let agentStatus: AgentStatus = if let result {
+                        result.isSuccess ? .completed : .failed
+                    } else {
+                        .running
+                    }
                     agentSpawns.append(AgentSummary(
                         id: toolId,
                         type: AgentType(from: agentType),
                         turnCount: 0,
-                        status: .running,
-                        parentTurnId: uuid
+                        status: agentStatus,
+                        parentTurnId: uuid,
+                        description: description,
+                        resultContent: result?.content
                     ))
                 } else {
                     toolCalls.append(ToolCall(

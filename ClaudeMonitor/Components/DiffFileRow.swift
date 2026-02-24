@@ -35,7 +35,7 @@ struct DiffFileRow: View {
         case .added: return .green
         case .deleted: return .red
         case .modified: return .yellow
-        case .renamed: return .blue
+        case .renamed: return .accentColor
         case .unknown: return .secondary
         }
     }

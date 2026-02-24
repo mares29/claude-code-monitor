@@ -102,6 +102,8 @@ struct AgentSummary: Identifiable, Sendable {
     var turnCount: Int
     var status: AgentStatus
     let parentTurnId: String
+    let description: String?
+    var resultContent: String?
 }
 
 // MARK: - JSONL Decoding Models
@@ -225,13 +227,21 @@ struct AnyCodable: Decodable {
 
 enum AnyCodableValue: Decodable {
     case string(String)
+    case textObject(String) // {"type": "text", "text": "..."}
     case array([AnyCodableValue])
     case other
+
+    private struct TextContent: Decodable {
+        let type: String?
+        let text: String?
+    }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.singleValueContainer()
         if let str = try? container.decode(String.self) {
             self = .string(str)
+        } else if let obj = try? container.decode(TextContent.self), let text = obj.text {
+            self = .textObject(text)
         } else if let arr = try? container.decode([AnyCodableValue].self) {
             self = .array(arr)
         } else {
@@ -242,6 +252,7 @@ enum AnyCodableValue: Decodable {
     var asString: String? {
         switch self {
         case .string(let s): return s
+        case .textObject(let s): return s
         case .array(let arr): return arr.compactMap(\.asString).joined(separator: "\n")
         case .other: return nil
         }

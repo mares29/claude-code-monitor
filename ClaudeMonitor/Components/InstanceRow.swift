@@ -43,7 +43,7 @@ struct InstanceRow: View {
 
             // Line 2: Current action + Sparkline
             HStack(spacing: 6) {
-                Text(currentAction ?? (instance.isActive ? "Thinking..." : "Idle"))
+                Text(currentAction ?? instance.activityState.label)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -54,8 +54,9 @@ struct InstanceRow: View {
                 Spacer()
 
                 if let spark = sparkline, !spark.isEmpty {
-                    SparklineView(data: spark.sparklineToData(), tint: isSelected ? .white : .blue)
+                    SparklineView(data: spark.sparklineToData(), tint: isSelected ? .white : .accentColor)
                         .frame(width: 60, height: 14)
+                        .offset(y: 10)
                 }
             }
 
@@ -67,7 +68,21 @@ struct InstanceRow: View {
             .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 6)
-        .opacity(!instance.isActive && !isSelected ? 0.5 : 1.0)
+        .mask {
+            if !instance.isActive {
+                LinearGradient(
+                    stops: [
+                        .init(color: .white.opacity(0.7), location: 0),
+                        .init(color: .white.opacity(0.3), location: 0.5),
+                        .init(color: .clear, location: 1.0)
+                    ],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            } else {
+                Color.white
+            }
+        }
         .contentShape(Rectangle())
     }
 
@@ -125,7 +140,7 @@ struct InstanceRow: View {
                 pid: 1234,
                 workingDirectory: "/Users/test/my-project",
                 arguments: ["claude", "--dangerously-skip-permissions"],
-                isActive: true,
+                activityState: .working,
                 terminalApp: "Warp",
                 cpuPercent: 8.5,
                 memoryMB: 180,
@@ -142,7 +157,7 @@ struct InstanceRow: View {
                 pid: 5678,
                 workingDirectory: "/Users/test/another-project",
                 arguments: ["claude", "--continue", "--verbose"],
-                isActive: false,
+                activityState: .idle,
                 terminalApp: "iTerm",
                 cpuPercent: 0.0,
                 memoryMB: 95,

@@ -23,7 +23,7 @@ struct Agent: Identifiable, Hashable, Sendable {
             .replacingOccurrences(of: ".jsonl", with: "")
             .split(separator: "-")
 
-        guard components.count >= 1 else { return .unknown }
+        guard components.count >= 1 else { return .custom("unknown") }
         return AgentType(from: String(components[0]))
     }
 }

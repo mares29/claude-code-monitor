@@ -81,7 +81,7 @@ actor AgentScanner {
 
         // Determine agent type - first try filename, then content
         var agentType = extractAgentType(from: url.lastPathComponent)
-        if agentType == .unknown, lines.count >= 2,
+        if agentType == .custom("unknown"), lines.count >= 2,
            let secondLine = lines.dropFirst().first,
            let secondEntry = try? JSONDecoder().decode(AgentEntry.self, from: Data(secondLine.utf8)),
            let assistantContent = secondEntry.message?.content {
@@ -129,7 +129,7 @@ actor AgentScanner {
                 return AgentType(from: typePart)
             }
         }
-        return .unknown
+        return .custom("unknown")
     }
 
     private func inferAgentType(from content: [MessageContent]) -> AgentType {
@@ -147,7 +147,7 @@ actor AgentScanner {
             return .general
         }
 
-        return .unknown
+        return .custom("unknown")
     }
 
     private func determineStatus(url: URL, lines: [String]) -> AgentStatus {

@@ -1,25 +1,29 @@
 import SwiftUI
 
-enum AgentType: String, CaseIterable, Codable, Sendable {
+enum AgentType: Codable, Sendable, Hashable {
     case explore
     case plan
     case bash
     case general
     case codeReview
+    case codeSimplifier
     case compact
     case promptSuggestion
-    case unknown
+    case custom(String)
 
     init(from string: String) {
-        switch string.lowercased() {
+        // Strip skill prefix (e.g., "code-simplifier:code-simplifier" → "code-simplifier")
+        let normalized = string.components(separatedBy: ":").first?.lowercased() ?? string.lowercased()
+        switch normalized {
         case "explore": self = .explore
         case "plan": self = .plan
         case "bash": self = .bash
         case "general", "general-purpose": self = .general
-        case "codereview", "code_review", "code-review": self = .codeReview
+        case "codereview", "code_review", "code-review", "code-reviewer": self = .codeReview
+        case "code-simplifier", "codesimplifier", "code_simplifier": self = .codeSimplifier
         case "compact": self = .compact
         case "prompt_suggestion", "promptsuggestion": self = .promptSuggestion
-        default: self = .unknown
+        default: self = .custom(string)
         }
     }
 
@@ -30,9 +34,30 @@ enum AgentType: String, CaseIterable, Codable, Sendable {
         case .bash: "Bash"
         case .general: "General"
         case .codeReview: "Code Review"
+        case .codeSimplifier: "Code Simplifier"
         case .compact: "Compact"
         case .promptSuggestion: "Prompt Suggestion"
-        case .unknown: "Unknown"
+        case .custom(let raw): raw
+        }
+    }
+}
+
+/// Instance activity state derived from JSONL file signals
+enum ActivityState: Sendable, Equatable {
+    /// Actively generating (JSONL modified recently + last entry is assistant mid-turn)
+    case working
+    /// Waiting for user input (last entry is assistant with end_turn)
+    case waiting
+    /// No recent JSONL activity
+    case idle
+
+    var isActive: Bool { self == .working }
+
+    var label: String {
+        switch self {
+        case .working: "Working"
+        case .waiting: "Waiting"
+        case .idle: "Idle"
         }
     }
 }
@@ -74,7 +99,7 @@ enum MenuBarStatus: Sendable {
     var tint: Color {
         switch self {
         case .idle: .gray
-        case .active: .blue
+        case .active: Color.accentColor
         case .warning: .yellow
         }
     }

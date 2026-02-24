@@ -8,7 +8,9 @@ struct ClaudeInstance: Identifiable, Hashable, Sendable {
     let startTime: Date
     let arguments: [String]
     var agents: [Agent]
-    var isActive: Bool
+    var activityState: ActivityState
+
+    var isActive: Bool { activityState.isActive }
 
     // Process metadata
     let terminalApp: String?   // "Warp", "iTerm", "Terminal", etc.
@@ -63,7 +65,7 @@ struct ClaudeInstance: Identifiable, Hashable, Sendable {
         startTime: Date = Date(),
         arguments: [String] = [],
         agents: [Agent] = [],
-        isActive: Bool = true,
+        activityState: ActivityState = .working,
         terminalApp: String? = nil,
         cpuPercent: Double = 0.0,
         memoryMB: Int = 0,
@@ -75,7 +77,7 @@ struct ClaudeInstance: Identifiable, Hashable, Sendable {
         self.startTime = startTime
         self.arguments = arguments
         self.agents = agents
-        self.isActive = isActive
+        self.activityState = activityState
         self.terminalApp = terminalApp
         self.cpuPercent = cpuPercent
         self.memoryMB = memoryMB
@@ -228,6 +230,75 @@ struct ClaudeInstance: Identifiable, Hashable, Sendable {
         }
 
         return nil
+    }
+
+    /// Determine activity state from JSONL file signals
+    /// Combines file modification time (recent activity) with last entry type (working vs waiting)
+    static func determineActivityState(workingDirectory: String, sessionId: String?) -> ActivityState {
+        guard let sessionId else { return .idle }
+
+        let path = "\(projectsPath(for: workingDirectory))/\(sessionId).jsonl"
+        let fm = FileManager.default
+
+        // Signal 1: JSONL file modification time
+        guard let attrs = try? fm.attributesOfItem(atPath: path),
+              let modDate = attrs[.modificationDate] as? Date else {
+            return .idle
+        }
+        let age = Date().timeIntervalSince(modDate)
+        guard age < 30 else { return .idle } // No activity in last 30s
+
+        // Signal 2: Last entry type — read tail of file
+        guard let handle = FileHandle(forReadingAtPath: path) else { return .working }
+        defer { try? handle.close() }
+
+        // Seek to last 4KB to find the final JSONL line
+        let fileSize = (try? handle.seekToEnd()) ?? 0
+        let readSize: UInt64 = min(fileSize, 4096)
+        try? handle.seek(toOffset: fileSize - readSize)
+        guard let data = try? handle.readToEnd(),
+              let tail = String(data: data, encoding: .utf8) else {
+            return .working
+        }
+
+        // Find the last non-empty line
+        let lines = tail.components(separatedBy: "\n").filter { !$0.isEmpty }
+        guard let lastLine = lines.last,
+              let lineData = lastLine.data(using: .utf8) else {
+            return .working
+        }
+
+        // Parse just the type and stop_reason
+        struct TailEntry: Decodable {
+            let type: String?
+            let message: TailMessage?
+        }
+        struct TailMessage: Decodable {
+            let role: String?
+            let stopReason: String?
+            enum CodingKeys: String, CodingKey {
+                case role
+                case stopReason = "stop_reason"
+            }
+        }
+
+        guard let entry = try? JSONDecoder().decode(TailEntry.self, from: lineData) else {
+            return .working
+        }
+
+        // If last entry is "user" type, Claude is working on a response
+        if entry.type == "user" {
+            return .working
+        }
+
+        // If assistant with end_turn, waiting for user input
+        if entry.type == "assistant",
+           entry.message?.stopReason == "end_turn" {
+            return .waiting
+        }
+
+        // Otherwise (mid-turn assistant, tool use, etc.) → working
+        return .working
     }
 
     /// Convert working directory to Claude projects path
