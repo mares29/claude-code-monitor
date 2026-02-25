@@ -182,6 +182,7 @@ struct MainView: View {
         let diff = state.gitDiffs[instance.workingDirectory] ?? .empty
         return HStack(spacing: 12) {
             tabButton("Session", systemImage: "text.bubble", tab: .session)
+            Divider().frame(height: 14)
             tabButton("Changes", systemImage: "arrow.triangle.branch", tab: .changes, badge: diff.fileCount)
         }
         .padding(.horizontal, 16)
