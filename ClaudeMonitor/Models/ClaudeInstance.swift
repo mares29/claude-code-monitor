@@ -232,9 +232,12 @@ struct ClaudeInstance: Identifiable, Hashable, Sendable {
         return nil
     }
 
-    /// Determine activity state from JSONL file signals
-    /// Combines file modification time (recent activity) with last entry type (working vs waiting)
-    static func determineActivityState(workingDirectory: String, sessionId: String?) -> ActivityState {
+    /// Determine activity state from JSONL file signals + CPU usage
+    /// CPU > 10% overrides JSONL signals (catches long thinking/writing phases)
+    static func determineActivityState(workingDirectory: String, sessionId: String?, cpuPercent: Double = 0) -> ActivityState {
+        // High CPU means actively working (e.g. writing a long plan)
+        if cpuPercent > 10 { return .working }
+
         guard let sessionId else { return .idle }
 
         let path = "\(projectsPath(for: workingDirectory))/\(sessionId).jsonl"
