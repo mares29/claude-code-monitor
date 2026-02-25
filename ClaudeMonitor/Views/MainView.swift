@@ -78,11 +78,12 @@ struct MainView: View {
 
     // MARK: - Sidebar
 
+    private var allInstances: [ClaudeInstance] {
+        state.groupedInstances.flatMap(\.instances)
+    }
+
     private var sidebar: some View {
-        List(selection: Binding(
-            get: { selectedPid },
-            set: { state.selectedItem = $0.map { .instance($0) } }
-        )) {
+        List {
             ForEach(state.groupedInstances) { group in
                 Section(isExpanded: expandedGroupBinding(for: group.workingDirectory)) {
                     ForEach(Array(group.instances.enumerated()), id: \.element.id) { index, instance in
@@ -95,6 +96,25 @@ struct MainView: View {
         }
         .listStyle(.sidebar)
         .navigationSplitViewColumnWidth(min: 320, ideal: 360, max: 500)
+        .onKeyPress(.upArrow) {
+            selectAdjacentInstance(direction: -1)
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            selectAdjacentInstance(direction: 1)
+            return .handled
+        }
+    }
+
+    private func selectAdjacentInstance(direction: Int) {
+        let instances = allInstances
+        guard !instances.isEmpty else { return }
+        guard let currentIndex = instances.firstIndex(where: { $0.pid == selectedPid }) else {
+            state.selectedItem = instances.first.map { .instance($0.pid) }
+            return
+        }
+        let newIndex = min(max(currentIndex + direction, 0), instances.count - 1)
+        state.selectedItem = .instance(instances[newIndex].pid)
     }
 
     private func instanceRow(instance: ClaudeInstance, index: Int, groupCount: Int) -> some View {
@@ -110,7 +130,10 @@ struct MainView: View {
                 latestTokens: sid.flatMap { state.sessionLatestTokens[$0] }
             )
         }
-        .tag(instance.pid)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            state.selectedItem = .instance(instance.pid)
+        }
         .instanceContextMenu(
             instance: instance,
             instanceToKill: $instanceToKill,
@@ -125,8 +148,6 @@ struct MainView: View {
         if let pid = selectedPid,
            let instance = state.instances.first(where: { $0.pid == pid }) {
             VStack(spacing: 0) {
-                detailTabBar(instance: instance)
-                Divider()
                 switch detailTab {
                 case .session:
                     SessionFeedView(instance: instance)
@@ -137,6 +158,12 @@ struct MainView: View {
                         summary: state.gitDiffs[instance.workingDirectory] ?? .empty
                     )
                     .frame(maxHeight: .infinity)
+                }
+            }
+            .navigationTitle(URL(fileURLWithPath: instance.workingDirectory).lastPathComponent)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    detailTabBar(instance: instance)
                 }
             }
         } else if let instance = state.instances.first {
@@ -153,37 +180,31 @@ struct MainView: View {
 
     private func detailTabBar(instance: ClaudeInstance) -> some View {
         let diff = state.gitDiffs[instance.workingDirectory] ?? .empty
-        return HStack(spacing: 0) {
+        return HStack(spacing: 12) {
             tabButton("Session", systemImage: "text.bubble", tab: .session)
             tabButton("Changes", systemImage: "arrow.triangle.branch", tab: .changes, badge: diff.fileCount)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
     }
 
     private func tabButton(_ title: String, systemImage: String, tab: DetailTab, badge: Int = 0) -> some View {
-        Button {
+        let isActive = detailTab == tab
+        return Button {
             detailTab = tab
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: systemImage)
-                    .font(.caption)
                 Text(title)
-                    .font(.caption.weight(.medium))
-                Text("\(max(badge, 0))")
-                    .font(.caption2)
-                    .padding(.horizontal, 5)
-                    .padding(.vertical, 1)
-                    .background(Color.secondary.opacity(0.15))
-                    .clipShape(Capsule())
-                    .opacity(badge > 0 ? 1 : 0)
+                if badge > 0 {
+                    Text("\(badge)")
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 1)
+                        .background(Color.secondary.opacity(0.15))
+                        .clipShape(Capsule())
+                }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(detailTab == tab ? Color.accentColor.opacity(0.12) : Color.clear)
-            .foregroundStyle(detailTab == tab ? .primary : .secondary)
-            .cornerRadius(6)
+            .font(.subheadline.weight(isActive ? .semibold : .regular))
+            .foregroundStyle(isActive ? Color.accentColor : .secondary)
         }
         .buttonStyle(.plain)
         .focusEffectDisabled()

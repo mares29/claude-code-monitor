@@ -8,6 +8,8 @@ struct InstanceRow: View {
     let currentModel: String?
     let latestTokens: TokenUsage?
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             // Line 1: Status + Name + Badges + Relative time
@@ -15,7 +17,7 @@ struct InstanceRow: View {
                 if instance.isDangerousMode {
                     Image(systemName: "bolt.shield.fill")
                         .font(.system(size: 10))
-                        .foregroundStyle(isSelected ? .white : .orange)
+                        .foregroundStyle(.orange)
                         .help("Running with --dangerously-skip-permissions")
                 }
 
@@ -28,8 +30,8 @@ struct InstanceRow: View {
                         .font(.caption2)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
-                        .background(isSelected ? Color.white.opacity(0.2) : Color.secondary.opacity(0.15))
-                        .foregroundStyle(isSelected ? .white : .secondary)
+                        .background(Color.secondary.opacity(0.15))
+                        .foregroundStyle(.secondary)
                         .clipShape(RoundedRectangle(cornerRadius: 3))
                 }
 
@@ -54,7 +56,7 @@ struct InstanceRow: View {
                 Spacer()
 
                 if let spark = sparkline, !spark.isEmpty {
-                    SparklineView(data: spark.sparklineToData(), tint: isSelected ? .white : .accentColor)
+                    SparklineView(data: spark.sparklineToData(), tint: .accentColor)
                         .frame(width: 60, height: 14)
                         .offset(y: 10)
                 }
@@ -68,21 +70,30 @@ struct InstanceRow: View {
             .foregroundStyle(.tertiary)
         }
         .padding(.vertical, 6)
-        .mask {
-            if !instance.isActive {
-                LinearGradient(
-                    stops: [
-                        .init(color: .white.opacity(0.7), location: 0),
-                        .init(color: .white.opacity(0.3), location: 0.5),
-                        .init(color: .clear, location: 1.0)
-                    ],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            } else {
-                Color.white
+        .padding(.horizontal, 8)
+        .background {
+            if isSelected {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(colorScheme == .dark
+                        ? Color.white.opacity(0.08)
+                        : Color.black.opacity(0.06))
             }
         }
+        .animation(.easeInOut(duration: 0.6), value: instance.isActive)
+        .mask {
+            // Fade ratio: 0 = fully visible, 1 = full fade effect
+            let fade = instance.isActive ? 0.0 : 1.0
+            LinearGradient(
+                stops: [
+                    .init(color: .white.opacity(1.0 - fade * 0.3), location: 0),
+                    .init(color: .white.opacity(1.0 - fade * 0.7), location: 0.5),
+                    .init(color: .white.opacity(1.0 - fade), location: 1.0)
+                ],
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+        }
+        .animation(.easeInOut(duration: 0.6), value: instance.isActive)
         .contentShape(Rectangle())
     }
 
