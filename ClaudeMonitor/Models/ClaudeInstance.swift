@@ -208,8 +208,11 @@ struct ClaudeInstance: Identifiable, Hashable, Sendable {
         // Try the working directory and walk up to find a sessions-index.json
         var currentPath = workingDirectory
         let fm = FileManager.default
+        let homePath = NSHomeDirectory()
+        var depth = 0
+        let maxDepth = 10
 
-        while currentPath != "/" && !currentPath.isEmpty {
+        while currentPath != "/" && !currentPath.isEmpty && depth < maxDepth && currentPath.hasPrefix(homePath) {
             let projectsPath = projectsPath(for: currentPath)
             let indexPath = "\(projectsPath)/sessions-index.json"
 
@@ -227,6 +230,7 @@ struct ClaudeInstance: Identifiable, Hashable, Sendable {
 
             // Move up one directory
             currentPath = (currentPath as NSString).deletingLastPathComponent
+            depth += 1
         }
 
         return nil

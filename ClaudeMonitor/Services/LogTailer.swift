@@ -39,10 +39,19 @@ actor LogTailer {
         ) else { return }
 
         let logFiles = files.filter { $0.pathExtension == "txt" }
+        let activePaths = Set(logFiles.map(\.path))
 
         for file in logFiles {
             let sessionId = file.deletingPathExtension().lastPathComponent
             readNewLines(from: file, sessionId: sessionId, continuation: continuation)
+        }
+
+        // Clean up handles for files no longer in the active set
+        let stalePaths = fileHandles.keys.filter { !activePaths.contains($0) }
+        for path in stalePaths {
+            try? fileHandles[path]?.close()
+            fileHandles.removeValue(forKey: path)
+            fileOffsets.removeValue(forKey: path)
         }
     }
 

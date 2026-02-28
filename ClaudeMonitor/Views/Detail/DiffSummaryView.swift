@@ -11,9 +11,6 @@ struct DiffSummaryView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SessionActionBar(instance: instance)
-            Divider()
-
             if summary.isEmpty {
                 ContentUnavailableView(
                     "No Changes",

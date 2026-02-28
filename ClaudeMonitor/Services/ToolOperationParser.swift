@@ -1,11 +1,12 @@
 import Foundation
 
 struct ToolOperationParser: Sendable {
+    private static let decoder = JSONDecoder()
 
     /// Parse a single JSONL line for tool operations
     nonisolated func parse(line: String, sessionId: String) -> [ToolOperation] {
         guard let data = line.data(using: .utf8),
-              let entry = try? JSONDecoder().decode(ToolUseEntry.self, from: data),
+              let entry = try? Self.decoder.decode(ToolUseEntry.self, from: data),
               let content = entry.message?.content else { return [] }
 
         let timestamp = entry.timestamp ?? Date()
