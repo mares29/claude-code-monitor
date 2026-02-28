@@ -8,17 +8,14 @@ struct SessionFeedView: View {
     @State private var expandedToolIds: Set<String> = []
     @State private var expandedAgentIds: Set<String> = []
     @State private var fileOffset: UInt64 = 0
+    @State private var scrollTrigger = 0
+    @State private var isNearBottom = true
 
     private let parser = SessionParser()
     private let watcher = SessionFileWatcher()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Action bar - pinned at top
-            SessionActionBar(instance: instance)
-
-            Divider()
-
             // Timeline feed
             if turns.isEmpty {
                 ContentUnavailableView(
@@ -28,14 +25,29 @@ struct SessionFeedView: View {
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 2) {
-                        ForEach(turns) { turn in
-                            turnTimeline(turn)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 2) {
+                            ForEach(turns) { turn in
+                                turnTimeline(turn)
+                            }
+                            Color.clear
+                                .frame(height: 1)
+                                .id("bottom")
+                                .onAppear { isNearBottom = true }
+                                .onDisappear { isNearBottom = false }
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                    }
+                    .defaultScrollAnchor(.bottom)
+                    .onChange(of: scrollTrigger) {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                proxy.scrollTo("bottom", anchor: .bottom)
+                            }
                         }
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
                 }
             }
         }
@@ -62,6 +74,7 @@ struct SessionFeedView: View {
             expandedToolIds = []
             expandedAgentIds = []
             fileOffset = newOffset
+            scrollTrigger += 1
 
             startWatching()
         }
@@ -153,10 +166,14 @@ struct SessionFeedView: View {
             Task {
                 let (newTurns, newOffset) = parser.parseIncremental(sessionPath: sessionPath, fromOffset: fileOffset)
                 await MainActor.run {
+                    let shouldScroll = isNearBottom
                     let existingIds = Set(turns.map(\.id))
                     let uniqueNewTurns = newTurns.filter { !existingIds.contains($0.id) }
-                    turns = (turns + uniqueNewTurns).sorted { $0.timestamp > $1.timestamp }
+                    turns = (turns + uniqueNewTurns).sorted { $0.timestamp < $1.timestamp }
                     fileOffset = newOffset
+                    if shouldScroll && !uniqueNewTurns.isEmpty {
+                        scrollTrigger += 1
+                    }
                 }
             }
         }

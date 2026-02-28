@@ -185,7 +185,7 @@ struct SessionParser: Sendable {
             }
         }
 
-        // Sort newest first
-        return turns.sorted { $0.timestamp > $1.timestamp }
+        // Sort oldest first (newest at bottom)
+        return turns.sorted { $0.timestamp < $1.timestamp }
     }
 }

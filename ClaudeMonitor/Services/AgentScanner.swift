@@ -1,23 +1,13 @@
 import Foundation
 
 actor AgentScanner {
-    private let projectsDirectory: URL
-
-    init() {
-        self.projectsDirectory = URL(fileURLWithPath: NSHomeDirectory())
-            .appendingPathComponent(".claude/projects")
-    }
-
     /// Scan for agents belonging to a specific session
     func scanAgents(for sessionId: String, projectPath: String) -> [Agent] {
         var agents: [Agent] = []
         let fm = FileManager.default
 
         // Build path to the project's session directory
-        let encodedPath = projectPath
-            .replacingOccurrences(of: "/", with: "-")
-            .replacingOccurrences(of: ".", with: "-")
-        let projectDir = projectsDirectory.appendingPathComponent(encodedPath)
+        let projectDir = URL(fileURLWithPath: ClaudeInstance.projectsPath(for: projectPath))
 
         // Check two locations for agent files:
         // 1. {project}/{sessionId}/subagents/agent-*.jsonl

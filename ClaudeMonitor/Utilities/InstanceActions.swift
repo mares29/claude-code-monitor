@@ -10,15 +10,40 @@ struct InstanceActions: Sendable {
         kill(pid_t(pid), SIGINT)
     }
 
-    /// Send SIGTERM, then SIGKILL after 3 seconds if still alive
+    /// Send SIGTERM, then SIGKILL after 3 seconds if still alive and still claude
     nonisolated static func terminate(pid: Int) {
         kill(pid_t(pid), SIGTERM)
 
         DispatchQueue.global().asyncAfter(deadline: .now() + 3) {
             // Check if process is still alive (kill with signal 0 tests existence)
-            if kill(pid_t(pid), 0) == 0 {
-                kill(pid_t(pid), SIGKILL)
-            }
+            guard kill(pid_t(pid), 0) == 0 else { return }
+
+            // Verify the PID still belongs to a claude process (PIDs can be reused)
+            guard isClaudeProcess(pid: pid) else { return }
+
+            kill(pid_t(pid), SIGKILL)
+        }
+    }
+
+    /// Check if a PID belongs to a claude process
+    private nonisolated static func isClaudeProcess(pid: Int) -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/ps")
+        process.arguments = ["-p", "\(pid)", "-o", "comm="]
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = FileHandle.nullDevice
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return output.contains("claude")
+        } catch {
+            return false
         }
     }
 
@@ -39,10 +64,13 @@ struct InstanceActions: Sendable {
         }
     }
 
+    /// Validate tty format to prevent AppleScript injection
+    private static let ttyPattern = /^ttys\d+$/
+
     /// Terminal.app — iterate windows/tabs to find matching tty
     @MainActor
     private static func focusTerminalApp(tty: String?) {
-        guard let tty else {
+        guard let tty, tty.wholeMatch(of: ttyPattern) != nil else {
             focusAppByName("Terminal")
             return
         }
@@ -69,7 +97,7 @@ struct InstanceActions: Sendable {
     /// iTerm2 — iterate windows/tabs/sessions to find matching tty
     @MainActor
     private static func focusiTerm(tty: String?) {
-        guard let tty else {
+        guard let tty, tty.wholeMatch(of: ttyPattern) != nil else {
             focusAppByName("iTerm2")
             return
         }

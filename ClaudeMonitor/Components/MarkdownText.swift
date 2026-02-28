@@ -5,10 +5,12 @@ import SwiftUI
 struct MarkdownText: View {
     let text: String
     let font: Font
+    let blocks: [Block]
 
     init(_ text: String, font: Font = .caption) {
         self.text = text
         self.font = font
+        self.blocks = Self.parseBlocks(from: text)
     }
 
     var body: some View {
@@ -21,7 +23,7 @@ struct MarkdownText: View {
 
     // MARK: - Block Model
 
-    private enum Block {
+    enum Block {
         case paragraph(AttributedString)
         case heading(Int, AttributedString)
         case codeBlock(String, String?) // code, language
@@ -111,7 +113,7 @@ struct MarkdownText: View {
 
     // MARK: - Parsing
 
-    private var blocks: [Block] {
+    private static func parseBlocks(from text: String) -> [Block] {
         let opts = AttributedString.MarkdownParsingOptions(interpretedSyntax: .full)
         guard let parsed = try? AttributedString(markdown: text, options: opts) else {
             return [.paragraph(AttributedString(text))]
@@ -151,7 +153,7 @@ struct MarkdownText: View {
         return mergeListItems(result)
     }
 
-    private func buildBlock(
+    private static func buildBlock(
         range: Range<AttributedString.Index>,
         intent: PresentationIntent?,
         in source: AttributedString
@@ -192,7 +194,7 @@ struct MarkdownText: View {
     }
 
     /// Merge consecutive bullet/ordered list items into single list blocks
-    private func mergeListItems(_ blocks: [Block]) -> [Block] {
+    private static func mergeListItems(_ blocks: [Block]) -> [Block] {
         var merged: [Block] = []
         for block in blocks {
             switch block {

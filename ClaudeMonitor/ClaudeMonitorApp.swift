@@ -159,8 +159,8 @@ struct ClaudeMonitorApp: App {
 
         // Fast loop (0.5s): sparkline + live data (cheap file reads only)
         Task.detached {
-            while true {
-                try? await Task.sleep(for: .milliseconds(500))
+            while !Task.isCancelled {
+                try await Task.sleep(for: .milliseconds(500))
 
                 let instances = await MainActor.run { state.instances }
 
@@ -216,8 +216,8 @@ struct ClaudeMonitorApp: App {
 
         // Slow loop (3s): git diff scanning + conflict pruning
         Task.detached {
-            while true {
-                try? await Task.sleep(for: .seconds(3))
+            while !Task.isCancelled {
+                try await Task.sleep(for: .seconds(3))
 
                 let instances = await MainActor.run { state.instances }
 
@@ -240,10 +240,7 @@ struct ClaudeMonitorApp: App {
     }
 
     private nonisolated static func sessionFilePath(workingDirectory: String, sessionId: String) -> String {
-        let encoded = workingDirectory
-            .replacingOccurrences(of: "/", with: "-")
-            .replacingOccurrences(of: ".", with: "-")
-        return "\(NSHomeDirectory())/.claude/projects/\(encoded)/\(sessionId).jsonl"
+        "\(ClaudeInstance.projectsPath(for: workingDirectory))/\(sessionId).jsonl"
     }
 
     /// Extract current action, model, and tokens from raw JSONL lines

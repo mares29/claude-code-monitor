@@ -6,39 +6,54 @@ final class SessionFileWatcher: @unchecked Sendable {
     private let queue = DispatchQueue(label: "SessionFileWatcher", qos: .utility)
 
     func watch(path: URL, onChange: @escaping () -> Void) {
-        stopWatching()
+        queue.sync {
+            self._stopWatching()
+        }
 
-        fileDescriptor = open(path.path, O_EVTONLY)
-        guard fileDescriptor >= 0 else { return }
+        let fd = open(path.path, O_EVTONLY)
+        guard fd >= 0 else { return }
 
-        source = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: fileDescriptor,
+        let newSource = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd,
             eventMask: [.write, .extend],
             queue: queue
         )
 
-        source?.setEventHandler {
+        newSource.setEventHandler {
             DispatchQueue.main.async {
                 onChange()
             }
         }
 
-        source?.setCancelHandler { [weak self] in
-            if let fd = self?.fileDescriptor, fd >= 0 {
-                close(fd)
-            }
-            self?.fileDescriptor = -1
+        newSource.setCancelHandler {
+            // FD is closed synchronously in _stopWatching(), not here.
         }
 
-        source?.resume()
+        queue.sync {
+            self.fileDescriptor = fd
+            self.source = newSource
+        }
+
+        newSource.resume()
     }
 
     func stopWatching() {
+        queue.sync {
+            self._stopWatching()
+        }
+    }
+
+    /// Must be called on `queue`.
+    private func _stopWatching() {
         source?.cancel()
         source = nil
+        if fileDescriptor >= 0 {
+            close(fileDescriptor)
+            fileDescriptor = -1
+        }
     }
 
     deinit {
-        stopWatching()
+        _stopWatching()
     }
 }

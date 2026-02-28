@@ -23,6 +23,8 @@ final class MonitorState {
     // Git diff data (keyed by working directory)
     var gitDiffs: [String: GitDiffSummary] = [:]
 
+    private(set) var lastErrorTimestamp: Date?
+
     private let maxLogEntries = 10_000
     private let maxRecentOps = 100
 
@@ -42,15 +44,18 @@ final class MonitorState {
 
     var menuBarStatus: MenuBarStatus {
         guard !instances.isEmpty else { return .idle }
-        let sixtySecondsAgo = Date().addingTimeInterval(-60)
-        let hasRecentError = logEntries.contains {
-            $0.level == .error && $0.timestamp > sixtySecondsAgo
+        if let lastError = lastErrorTimestamp,
+           lastError > Date().addingTimeInterval(-60) {
+            return .warning
         }
-        return hasRecentError ? .warning : .active
+        return .active
     }
 
     func addLogEntry(_ entry: LogEntry) {
         logEntries.append(entry)
+        if entry.level == .error {
+            lastErrorTimestamp = entry.timestamp
+        }
         if logEntries.count > maxLogEntries {
             logEntries.removeFirst(logEntries.count - maxLogEntries)
         }

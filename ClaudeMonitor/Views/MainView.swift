@@ -46,16 +46,16 @@ struct MainView: View {
             try? await Task.sleep(for: .seconds(1.5))
             copyConfirmation = nil
         }
-        .onChange(of: state.instances) { _, newInstances in
+        .onChange(of: Set(state.instances.map(\.workingDirectory))) { _, currentDirs in
             // Auto-expand only genuinely new working directories
-            let currentDirs = Set(newInstances.map(\.workingDirectory))
             let newDirs = currentDirs.subtracting(knownDirectories)
             expandedGroups.formUnion(newDirs)
             knownDirectories = currentDirs
-
+        }
+        .onChange(of: state.instances.map(\.pid)) { _, pids in
             // Auto-select first instance if selection is invalid
-            if selectedPid == nil || !newInstances.contains(where: { $0.pid == selectedPid }) {
-                state.selectedItem = newInstances.first.map { .instance($0.pid) }
+            if selectedPid == nil || !pids.contains(where: { $0 == selectedPid }) {
+                state.selectedItem = state.instances.first.map { .instance($0.pid) }
             }
         }
         .alert(
@@ -160,10 +160,77 @@ struct MainView: View {
                     .frame(maxHeight: .infinity)
                 }
             }
-            .navigationTitle(URL(fileURLWithPath: instance.workingDirectory).lastPathComponent)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    let diff = state.gitDiffs[instance.workingDirectory] ?? .empty
+                    Picker("", selection: $detailTab) {
+                        Text("Session").tag(DetailTab.session)
+                        Text(diff.fileCount > 0 ? "Changes (\(diff.fileCount))" : "Changes")
+                            .tag(DetailTab.changes)
+                    }
+                    .pickerStyle(.segmented)
+                    .fixedSize()
+                }
+
                 ToolbarItem(placement: .primaryAction) {
-                    detailTabBar(instance: instance)
+                    HStack(spacing: 6) {
+                        // Worktree path pill
+                        Button {
+                            InstanceActions.copyToClipboard(instance.workingDirectory)
+                            copyConfirmation = "Path copied"
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "folder")
+                                Text(URL(fileURLWithPath: instance.workingDirectory).lastPathComponent)
+                            }
+                            .font(.system(size: 12))
+                            .padding(.horizontal, 14)
+                            .padding(.vertical, 2)
+                        }
+                        .buttonStyle(.plain)
+                        .help(instance.workingDirectory)
+
+                        // Action buttons pill
+                        HStack(spacing: 0) {
+                            if instance.terminalApp != nil {
+                                toolbarIconButton("terminal", tooltip: "Focus Terminal") {
+                                    InstanceActions.focusTerminal(
+                                        terminalApp: instance.terminalApp,
+                                        tty: instance.tty
+                                    )
+                                }
+                            }
+
+                            toolbarIconButton("folder", tooltip: "Open in Finder") {
+                                InstanceActions.openInFinder(path: instance.workingDirectory)
+                            }
+
+                            if let editor = editorName(for: instance) {
+                                toolbarIconButton("chevron.left.forwardslash.chevron.right", tooltip: "Open in \(editor)") {
+                                    InstanceActions.openInEditor(
+                                        path: instance.workingDirectory,
+                                        editor: editor
+                                    )
+                                }
+                            }
+
+                            if let sessionId = instance.sessionId {
+                                toolbarIconButton("doc.text", tooltip: "Open Session Log") {
+                                    InstanceActions.openSessionLog(
+                                        workingDirectory: instance.workingDirectory,
+                                        sessionId: sessionId
+                                    )
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+
+                        // Interrupt (standalone)
+                        toolbarIconButton("stop.circle", tooltip: "Interrupt (^C)", tint: .red) {
+                            InstanceActions.interrupt(pid: instance.pid)
+                        }
+                    }
                 }
             }
         } else if let instance = state.instances.first {
@@ -178,37 +245,29 @@ struct MainView: View {
         }
     }
 
-    private func detailTabBar(instance: ClaudeInstance) -> some View {
-        let diff = state.gitDiffs[instance.workingDirectory] ?? .empty
-        return HStack(spacing: 12) {
-            tabButton("Session", systemImage: "text.bubble", tab: .session)
-            Divider().frame(height: 14)
-            tabButton("Changes", systemImage: "arrow.triangle.branch", tab: .changes, badge: diff.fileCount)
+    private func editorName(for instance: ClaudeInstance) -> String? {
+        switch instance.terminalApp {
+        case "VS Code": "VS Code"
+        case "Cursor": "Cursor"
+        default: nil
         }
-        .padding(.horizontal, 16)
     }
 
-    private func tabButton(_ title: String, systemImage: String, tab: DetailTab, badge: Int = 0) -> some View {
-        let isActive = detailTab == tab
-        return Button {
-            detailTab = tab
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: systemImage)
-                Text(title)
-                if badge > 0 {
-                    Text("\(badge)")
-                        .padding(.horizontal, 4)
-                        .padding(.vertical, 1)
-                        .background(Color.secondary.opacity(0.15))
-                        .clipShape(Capsule())
-                }
-            }
-            .font(.subheadline.weight(isActive ? .semibold : .regular))
-            .foregroundStyle(isActive ? Color.accentColor : .secondary)
+    private func toolbarIconButton(
+        _ icon: String,
+        tooltip: String,
+        tint: Color = .secondary,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(tint)
+                .frame(width: 28, height: 24)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .focusEffectDisabled()
+        .help(tooltip)
     }
 
     // MARK: - Helpers
