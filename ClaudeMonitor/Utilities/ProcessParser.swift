@@ -26,6 +26,7 @@ struct ProcessParser: Sendable {
     private nonisolated static func parseLine(_ line: String) -> ClaudeInstance? {
         // Skip non-claude lines and helper processes
         guard line.contains("claude") else { return nil }
+        guard !line.contains("ClaudeMonitor") else { return nil }
         guard !line.contains("Claude Helper") else { return nil }
         guard !line.contains("Claude.app/Contents/Frameworks") else { return nil }
         guard !line.contains("grep") else { return nil }

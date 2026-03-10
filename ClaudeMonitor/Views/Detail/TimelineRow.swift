@@ -88,10 +88,14 @@ struct TimelineRow: View {
         }
     }
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
     private var timeString: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "HH:mm:ss"
-        return fmt.string(from: toolCall.timestamp)
+        Self.timeFormatter.string(from: toolCall.timestamp)
     }
 
     private var displayTarget: String {

@@ -44,10 +44,14 @@ struct UserMessageDivider: View {
         }
     }
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
     private var timeString: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "HH:mm:ss"
-        return fmt.string(from: timestamp)
+        Self.timeFormatter.string(from: timestamp)
     }
 }
 
@@ -105,9 +109,50 @@ struct AssistantTextBlock: View {
         String(text.prefix(80)).replacingOccurrences(of: "\n", with: " ")
     }
 
+    private static let timeFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss"
+        return f
+    }()
+
     private var timeString: String {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "HH:mm:ss"
-        return fmt.string(from: timestamp)
+        Self.timeFormatter.string(from: timestamp)
+    }
+}
+
+// MARK: - Tool Icons
+
+func toolIconName(_ name: String) -> String {
+    switch name.lowercased() {
+    case "read": "doc.text"
+    case "write": "doc.badge.plus"
+    case "edit": "pencil"
+    case "bash": "terminal"
+    case "grep": "magnifyingglass"
+    case "glob": "folder.badge.gearshape"
+    case "webfetch", "websearch": "globe"
+    case "task": "person.2.circle"
+    case "taskoutput": "arrow.down.doc"
+    case "taskstop": "stop.circle"
+    case "taskcreate": "plus.square"
+    case "taskupdate": "arrow.triangle.2.circlepath"
+    case "tasklist", "taskget": "list.bullet"
+    case "skill": "sparkles"
+    case "askuserquestion": "questionmark.bubble"
+    case "enterplanmode", "exitplanmode": "map"
+    case "notebookedit": "book"
+    default: "gearshape"
+    }
+}
+
+func toolIconColor(_ name: String) -> Color {
+    switch name.lowercased() {
+    case "write", "edit": .orange
+    case "bash": .brown
+    case "task", "taskoutput", "taskstop": .brown
+    case "taskcreate", "taskupdate", "tasklist", "taskget": .brown
+    case "skill": .orange
+    case "askuserquestion": .green
+    default: .accentColor
     }
 }

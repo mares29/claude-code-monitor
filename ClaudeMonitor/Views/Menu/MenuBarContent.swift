@@ -7,6 +7,7 @@ struct MenuBarMenu: View {
     var body: some View {
         Button("Open Monitor") {
             openWindow(id: "main")
+            NSApp.activate()
         }
         .keyboardShortcut("o")
 
@@ -18,13 +19,7 @@ struct MenuBarMenu: View {
             ForEach(state.groupedInstances) { group in
                 Section(groupHeader(group)) {
                     ForEach(group.instances) { instance in
-                        Button {
-                            state.selectedItem = .instance(instance.pid)
-                            openWindow(id: "main")
-                        } label: {
-                            Text(attributedInstanceText(instance))
-                        }
-                        .keyboardShortcut(shortcutKey(for: instance), modifiers: .command)
+                        instanceButton(instance)
                     }
                 }
             }
@@ -39,6 +34,22 @@ struct MenuBarMenu: View {
     }
 
     // MARK: - Helpers
+
+    @ViewBuilder
+    private func instanceButton(_ instance: ClaudeInstance) -> some View {
+        let button = Button {
+            state.selectedItem = .instance(instance.pid)
+            openWindow(id: "main")
+            NSApp.activate()
+        } label: {
+            Text(attributedInstanceText(instance))
+        }
+        if let key = shortcutKey(for: instance) {
+            button.keyboardShortcut(key, modifiers: .command)
+        } else {
+            button
+        }
+    }
 
     private func groupHeader(_ group: InstanceGroup) -> String {
         group.displayName
@@ -64,10 +75,10 @@ struct MenuBarMenu: View {
         return parts.isEmpty ? "–" : parts.joined(separator: " \u{b7} ")
     }
 
-    private func shortcutKey(for instance: ClaudeInstance) -> KeyEquivalent {
+    private func shortcutKey(for instance: ClaudeInstance) -> KeyEquivalent? {
         guard let index = state.instances.firstIndex(where: { $0.id == instance.id }),
               index < 9 else {
-            return KeyEquivalent(" ")
+            return nil
         }
         return KeyEquivalent(Character("\(index + 1)"))
     }
